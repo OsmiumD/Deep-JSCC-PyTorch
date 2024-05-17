@@ -9,7 +9,6 @@ import torch
 import torch.nn as nn
 import channel
 
-
 """ def _image_normalization(norm_type):
     def _inner(tensor: torch.Tensor):
         if norm_type == 'nomalization':
@@ -19,6 +18,13 @@ import channel
         else:
             raise Exception('Unknown type of normalization')
     return _inner """
+
+
+def null_print(x, x2=...):
+    pass
+
+
+_if_print = null_print
 
 
 def ratio2filtersize(x: torch.Tensor, ratio):
@@ -33,8 +39,9 @@ def ratio2filtersize(x: torch.Tensor, ratio):
     encoder_temp = _Encoder(is_temp=True)
     z_temp = encoder_temp(x)
     # c = before_size * ratio / np.prod(z_temp.size()[-2:])
-    c = before_size * ratio / torch.prod(torch.tensor(z_temp.size()[-2:]))
-    return int(c)
+    # c = before_size * ratio / torch.prod(torch.tensor(z_temp.size()[-2:]))
+    c = before_size * ratio / 2
+    return int(c) * 2
 
 
 class _ConvWithPReLU(nn.Module):
@@ -52,7 +59,8 @@ class _ConvWithPReLU(nn.Module):
 
 
 class _TransConvWithPReLU(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride, activate=nn.PReLU(), padding=0, output_padding=0):
+    def __init__(self, in_channels, out_channels, kernel_size, stride, activate=nn.PReLU(), padding=0,
+                 output_padding=0):
         super(_TransConvWithPReLU, self).__init__()
         self.transconv = nn.ConvTranspose2d(
             in_channels, out_channels, kernel_size, stride, padding, output_padding)
@@ -73,12 +81,11 @@ class _Encoder(nn.Module):
         super(_Encoder, self).__init__()
         self.is_temp = is_temp
         # self.imgae_normalization = _image_normalization(norm_type='nomalization')
-        self.conv1 = _ConvWithPReLU(in_channels=3, out_channels=16, kernel_size=5, stride=2)
-        self.conv2 = _ConvWithPReLU(in_channels=16, out_channels=32, kernel_size=5, stride=2)
-        self.conv3 = _ConvWithPReLU(in_channels=32, out_channels=32,
-                                    kernel_size=5, padding=2)  # padding size could be changed here
-        self.conv4 = _ConvWithPReLU(in_channels=32, out_channels=32, kernel_size=5, padding=2)
-        self.conv5 = _ConvWithPReLU(in_channels=32, out_channels=c, kernel_size=5, padding=2)
+        self.conv1 = _ConvWithPReLU(in_channels=3, out_channels=32, kernel_size=4, stride=2, padding=1)
+        self.conv2 = _ConvWithPReLU(in_channels=32, out_channels=64, kernel_size=4, stride=2, padding=1)
+        self.conv3 = _ConvWithPReLU(in_channels=64, out_channels=128, kernel_size=4, stride=2, padding=1)
+        self.conv4 = _ConvWithPReLU(in_channels=128, out_channels=128, kernel_size=4, stride=2, padding=1)
+        self.conv5 = _ConvWithPReLU(in_channels=128, out_channels=c, kernel_size=2, padding=0)
         self.norm = self._normlizationLayer(P=P)
 
     @staticmethod
@@ -101,42 +108,57 @@ class _Encoder(nn.Module):
             if batch_size == 1:
                 return tensor.squeeze(0)
             return tensor
+
         return _inner
 
     def forward(self, x):
-        #x = self.imgae_normalization(x)
+        _if_print(x.shape)
+        # x = self.imgae_normalization(x)
         x = self.conv1(x)
+        _if_print(x.shape)
         x = self.conv2(x)
+        _if_print(x.shape)
         x = self.conv3(x)
+        _if_print(x.shape)
         x = self.conv4(x)
+        _if_print(x.shape)
         if not self.is_temp:
             x = self.conv5(x)
+            _if_print(x.shape)
             x = self.norm(x)
+            # exit(0)
         return x
 
 
 class _Decoder(nn.Module):
     def __init__(self, c=1):
         super(_Decoder, self).__init__()
-        #self.imgae_normalization = _image_normalization(norm_type='denormalization')
+        # self.imgae_normalization = _image_normalization(norm_type='denormalization')
         self.tconv1 = _TransConvWithPReLU(
-            in_channels=c, out_channels=32, kernel_size=5, stride=1, padding=2)
+            in_channels=c, out_channels=128, kernel_size=2, stride=1, padding=0)
         self.tconv2 = _TransConvWithPReLU(
-            in_channels=32, out_channels=32, kernel_size=5, stride=1, padding=2)
+            in_channels=128, out_channels=128, kernel_size=4, stride=2, padding=1)
         self.tconv3 = _TransConvWithPReLU(
-            in_channels=32, out_channels=32, kernel_size=5, stride=1, padding=2)
-        self.tconv4 = _TransConvWithPReLU(in_channels=32, out_channels=16, kernel_size=6, stride=2)
+            in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1)
+        self.tconv4 = _TransConvWithPReLU(in_channels=64, out_channels=32, kernel_size=4, stride=2, padding=1)
         self.tconv5 = _TransConvWithPReLU(
-            in_channels=16, out_channels=3, kernel_size=6, stride=2, activate=nn.Sigmoid())
+            in_channels=32, out_channels=3, kernel_size=4, stride=2, padding=1, activate=nn.Sigmoid())
         # may be some problems in tconv4 and tconv5, the kernal_size is not the same as the paper which is 5
 
     def forward(self, x):
+        _if_print(x.shape)
         x = self.tconv1(x)
+        _if_print(x.shape)
         x = self.tconv2(x)
+        _if_print(x.shape)
         x = self.tconv3(x)
+        _if_print(x.shape)
         x = self.tconv4(x)
+        _if_print(x.shape)
         x = self.tconv5(x)
-        #x = self.imgae_normalization(x)
+        _if_print(x.shape)
+        # exit(0)
+        # x = self.imgae_normalization(x)
         return x
 
 

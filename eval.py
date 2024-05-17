@@ -6,7 +6,7 @@ from torchvision import transforms
 from utils import get_psnr, image_normalization
 import os
 from model import DeepJSCC
-
+torch.manual_seed(1)
 
 def config_parser():
     import argparse
@@ -27,8 +27,9 @@ def main():
     test_image = transform(test_image)
 
     file_name = os.path.basename(args.saved)
-    c = file_name.split('_')[-1].split('.')[0]
+    c = file_name.split('_')[-1].split('.') [0]
     c = int(c)
+    print(f'c={c}')
     model = DeepJSCC(c=c, channel_type=args.channel, snr=args.snr)
     # model.load_state_dict(torch.load(args.saved))
     model.load_state_dict(torch.load(args.saved,map_location=torch.device('cuda:0')))
@@ -44,7 +45,7 @@ def main():
     demo_image = image_normalization('normalization')(demo_image)
     demo_image = torch.cat([test_image, demo_image], dim=1)
     demo_image = transforms.ToPILImage()(demo_image)
-    demo_image.save('./run/{}_{}'.format(args.saved.split('/')[-1], args.test_image.split('/')[-1]))
+    demo_image.save('./run/{}_{}_{}'.format(args.saved.split('/')[-1], args.snr, args.test_image.split('/')[-1]))
     print("psnr on {} is {}".format(args.test_image, psnr_all / args.times))
 
 

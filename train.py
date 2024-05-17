@@ -38,7 +38,7 @@ def config_parser():
     parser.add_argument('--batch_size', default=256, type=int, help='batch size')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight decay')
     parser.add_argument('--channel', default='AWGN', type=str,
-                        choices=['AWGN', 'Rayleigh'], help='channel type')
+                        choices=['AWGN', 'Rayleigh', 'Rician', 'Impulse'], help='channel type')
     parser.add_argument('--saved', default='./saved', type=str, help='saved_path')
     parser.add_argument('--snr_list', default=['19', '13',
                         '7', '4', '1'], nargs='+', help='snr_list')
@@ -99,6 +99,7 @@ def train(args: config_parser(), ratio: float, snr: float):
     print(args)
     image_fisrt = train_dataset.__getitem__(0)[0]
     c = ratio2filtersize(image_fisrt, ratio)
+    # exit(0)
     print("the inner channel is {}".format(c))
     model = DeepJSCC(c=c, channel_type=args.channel, snr=snr)
 
@@ -143,7 +144,7 @@ def train(args: config_parser(), ratio: float, snr: float):
         print("epoch: {}, loss: {:.4f}, test_mse: {:.4f}, lr:{}".format(
             epoch, run_loss/len(train_loader), test_mse/len(test_loader), optimizer.param_groups[0]['lr']))
     save_model(model, args.saved, args.saved +
-               '/{}_{}_{:.2f}_{:.2f}_{}_{}.pth'.format(args.dataset, args.epochs, ratio, snr, args.batch_size, c))
+               '/{}_{}_{:.2f}_{:.2f}_{}_{}_{}.pth'.format(args.dataset, args.epochs, ratio, snr, args.batch_size, args.channel, c))
 
 
 def save_model(model, dir, path):
